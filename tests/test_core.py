@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from appwire.config import parse, profile_name
+from appwire.client import add_applications
 from appwire.backend import Backend
 from appwire.daemon import dispatch, authorized
 from appwire.launch import validate_launch
@@ -172,6 +173,7 @@ class BackendTests(unittest.TestCase):
             return PUBLIC
         with patch('appwire.backend.command', side_effect=fake) as command:
             result = self.backend.status('test')
+        self.assertEqual(result['namespace_inode'], (self.backend.netns / self.backend.namespace('test')).stat().st_ino)
         self.assertEqual(result['health'], 'no-recent-handshake')
         self.assertEqual(result['peers'][0]['received'], 123)
         self.assertNotIn(KEY, json.dumps(result))
@@ -184,6 +186,29 @@ class AuthorizationTests(unittest.TestCase):
             self.assertTrue(authorized(1000))
         with patch('appwire.daemon.pwd.getpwuid', return_value=SimpleNamespace(pw_name='alice', pw_gid=1000)), patch('appwire.daemon.grp.getgrnam', return_value=SimpleNamespace(gr_gid=987)), patch('appwire.daemon.os.getgrouplist', return_value=[1000]):
             self.assertFalse(authorized(1000))
+
+
+class ProcessListingTests(unittest.TestCase):
+    def test_protected_namespace_handle_is_never_read_by_client(self):
+        original_stat = os.stat
+        calls = []
+        inode = original_stat('/proc/self/ns/net').st_ino
+        def protected_stat(path, *args, **kwargs):
+            calls.append(str(path))
+            if str(path).startswith('/run/netns'):
+                raise PermissionError('Protected namespace directory')
+            return original_stat(path, *args, **kwargs)
+        status = {'state': 'up', 'namespace': 'aw-1000-test', 'namespace_inode': inode}
+        with patch('appwire.client.os.stat', side_effect=protected_stat):
+            add_applications(status)
+        self.assertIn(os.getpid(), [p['pid'] for p in status['applications']])
+        self.assertFalse(any(p.startswith('/run/netns') for p in calls))
+
+    def test_missing_identity_does_not_fall_back_to_namespace_path(self):
+        status = {'state': 'up', 'namespace': 'aw-1000-test'}
+        with patch('appwire.client.os.stat', side_effect=AssertionError('Unexpected stat')):
+            add_applications(status)
+        self.assertEqual(status['applications'], [])
 
 
 class LaunchTests(unittest.TestCase):

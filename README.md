@@ -38,7 +38,7 @@ From this source directory:
 make check
 ./tests/integration.sh
 makepkg -f
-sudo pacman -U ./appwire-0.1.0-1-any.pkg.tar.zst
+sudo pacman -U ./appwire-0.1.0-2-any.pkg.tar.zst
 sudo systemd-sysusers
 sudo usermod -aG appwire "$USER"
 sudo systemctl enable --now appwire.service

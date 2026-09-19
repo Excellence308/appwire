@@ -41,9 +41,8 @@ def add_applications(status):
     status['applications'] = []
     if status.get('state') != 'up' or 'namespace' not in status:
         return
-    try:
-        target = os.stat('/run/netns/' + status['namespace']).st_ino
-    except OSError:
+    target = status.get('namespace_inode')
+    if type(target) is not int or target <= 0:
         return
     for process in Path('/proc').iterdir():
         if not process.name.isdecimal():

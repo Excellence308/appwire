@@ -12,7 +12,8 @@ One root Python service, standard library only. Fixed root-owned entry point
 uses Python isolated mode (`-I`) and a fixed module directory. Service environment
 is reset, subprocess executables use absolute paths, and no shell is invoked.
 Application PID inspection runs in the unprivileged client; the broker does not
-need CAP_SYS_PTRACE. Kernel capabilities are bounded in the unit; CAP_SYS_ADMIN remains necessary for
+need CAP_SYS_PTRACE. Status supplies the namespace inode number; clients compare
+it with their own processes without accessing protected /run/netns handles. Kernel capabilities are bounded in the unit; CAP_SYS_ADMIN remains necessary for
 namespace/mount entry. This is significant privilege, not equivalent to a
 memory-safe, formally verified helper. The broker is the component to audit.
 

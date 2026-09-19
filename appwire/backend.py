@@ -142,6 +142,8 @@ class Backend:
             return result
         self.verify(name)
         ns = self.namespace(name)
+        # Publish identity, not a namespace descriptor or access permissions.
+        result['namespace_inode'] = (self.netns / ns).stat().st_ino
         # Never use `wg show dump`: it includes private and preshared keys.
         fields = {}
         for field in ('endpoints', 'latest-handshakes', 'transfer'):

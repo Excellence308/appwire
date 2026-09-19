@@ -144,7 +144,7 @@ def launch_python(code):
 code = '''import json, os, socket
 from pathlib import Path
 status = Path('/proc/self/status').read_text()
-print(json.dumps({'dns': socket.gethostbyname('probe.appwire.test'), 'ns': os.readlink('/proc/self/ns/net'), 'resolv': Path('/etc/resolv.conf').read_text(), 'nss': Path('/etc/nsswitch.conf').read_text(), 'status': status, 'cwd': os.getcwd(), 'fds': {x: os.readlink('/proc/self/fd/'+x) for x in os.listdir('/proc/self/fd') if os.path.exists('/proc/self/fd/'+x)}}), flush=True)
+print(json.dumps({'inode': os.stat('/proc/self/ns/net').st_ino, 'dns': socket.gethostbyname('probe.appwire.test'), 'ns': os.readlink('/proc/self/ns/net'), 'resolv': Path('/etc/resolv.conf').read_text(), 'nss': Path('/etc/nsswitch.conf').read_text(), 'status': status, 'cwd': os.getcwd(), 'fds': {x: os.readlink('/proc/self/fd/'+x) for x in os.listdir('/proc/self/fd') if os.path.exists('/proc/self/fd/'+x)}}), flush=True)
 '''
 p, output, errors = launch_python(code)
 rc = p.wait(timeout=10)
@@ -152,6 +152,7 @@ errors.seek(0)
 check(rc == 0, 'app launch and DNS lookup: ' + errors.read().decode())
 output.seek(0)
 result = json.loads(output.read())
+check(result['inode'] == status['namespace_inode'], 'service-provided namespace identity matches launched app')
 check(result['dns'] == '10.20.0.1' and queries and queries[0][0] == '10.20.0.2', 'DNS query originated from tunnel address')
 check('hosts: files dns' in result['nss'] and 'nameserver 10.20.0.1' in result['resolv'], 'private DNS and NSS mounts applied')
 check('CapEff:\t0000000000000000' in result['status'] and 'CapPrm:\t0000000000000000' in result['status'] and 'CapBnd:\t0000000000000000' in result['status'] and 'NoNewPrivs:\t1' in result['status'], 'application has zero capabilities and no-new-privileges')
