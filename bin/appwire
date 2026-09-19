@@ -1,0 +1,5 @@
+#!/usr/bin/python -I
+import sys
+sys.path.insert(0, '/usr/lib/appwire')
+from appwire.cli import main
+sys.exit(main())

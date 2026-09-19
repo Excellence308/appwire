@@ -1,0 +1,45 @@
+# Python bytecode, virtual environments, and tool caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Arch packaging and generated distributions
+/pkg/
+/src/
+/build/
+/dist/
+*.egg-info/
+*.pkg.tar.*
+*.src.tar.*
+/appwire-*-source.tar.*
+
+# WireGuard profiles, credentials, and local environment files
+*.conf
+*.key
+*.pem
+.env
+.env.*
+!.env.example
+/profiles/
+/secrets/
+/credentials/
+# Non-secret package configuration templates may be versioned here.
+!/packaging/*.conf
+
+# Logs, local test output, and editor/OS files
+*.log
+/test-results/
+/appwire-gui.png
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/

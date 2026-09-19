@@ -1,0 +1,25 @@
+[Unit]
+Description=AppWire per-application WireGuard broker
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/appwire/appwired
+RuntimeDirectory=appwire
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+StateDirectory=appwire
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SETUID CAP_SETGID CAP_SETPCAP CAP_DAC_OVERRIDE CAP_CHOWN
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+# No PrivateMounts/ProtectSystem: named namespaces must survive broker restart.
+# App children make their own private mount namespace for DNS.
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

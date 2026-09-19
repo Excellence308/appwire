@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=AppWire
+Comment=Launch apps through isolated WireGuard profiles
+Exec=appwire gui
+Icon=network-vpn
+Terminal=false
+Categories=Network;GTK;
