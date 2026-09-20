@@ -14,13 +14,20 @@ namcap PKGBUILD
 namcap appwire-*.pkg.tar.zst
 ```
 
-The release source of truth is the Git tag. Do not move a published tag after external users or package repositories depend on it. During pre-publication bring-up, retagging is acceptable while the repository is still private/unannounced.
+The release source of truth is the Git tag. Do not move a published tag after external users or package repositories depend on it. During pre-publication bring-up, retagging is acceptable while the release has not been announced or consumed downstream.
 
 ## Arch package in this repository
 
-The root `PKGBUILD` is suitable for installing a tagged AppWire release directly with `makepkg`. It intentionally fetches the matching Git tag and therefore uses `sha256sums=('SKIP')` for the Git source.
+The root `PKGBUILD` is a developer/upstream packaging recipe. It builds the source tree that contains it and performs no network fetches. This makes local development, release validation and installation deterministic even when the repository is private or unavailable.
 
 The GUI is part of the normal AppWire package, so GTK dependencies are mandatory rather than optional. The package check validates both the Python test suite and the desktop entry.
+
+Because the root recipe builds the checked-out tree, users installing directly from source should first check out the desired release tag:
+
+```sh
+git checkout v0.1.0
+makepkg --syncdeps --cleanbuild --install
+```
 
 ## Future AUR publication
 
@@ -29,7 +36,7 @@ The AUR package should live in its own AUR Git repository and contain only the p
 - `PKGBUILD`
 - `.SRCINFO`
 
-For an AUR submission, prefer the immutable GitHub release/archive tarball over a Git checkout and pin its checksum. Example shape:
+For an AUR submission, use the immutable GitHub release/archive tarball and pin its checksum. Example shape:
 
 ```sh
 pkgname=appwire
