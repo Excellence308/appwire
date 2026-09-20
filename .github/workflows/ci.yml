@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, experimental]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git python python-gobject gtk3 iproute2 wireguard-tools systemd curl desktop-file-utils
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: make check
+
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/appwire.desktop
+
+      - name: Validate PKGBUILD metadata
+        run: bash -n PKGBUILD
