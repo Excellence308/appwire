@@ -16,18 +16,17 @@ depends=(
     'systemd'
     'curl'
 )
-makedepends=('git')
 checkdepends=('desktop-file-utils')
-source=("git+https://github.com/Excellence308/appwire.git#tag=v${pkgver}")
-sha256sums=('SKIP')
+source=()
+sha256sums=()
 
 check() {
-    cd "$srcdir/$pkgname"
+    cd "$startdir"
     make check
     desktop-file-validate packaging/appwire.desktop
 }
 
 package() {
-    cd "$srcdir/$pkgname"
+    cd "$startdir"
     make DESTDIR="$pkgdir" PREFIX=/usr install
 }
