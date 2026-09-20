@@ -1,22 +1,32 @@
-# Local-source package: run makepkg from this project directory.
+# Maintainer: Excellence308 <180781538+Excellence308@users.noreply.github.com>
+
 pkgname=appwire
 pkgver=0.1.0
-pkgrel=2
-pkgdesc='Small per-application WireGuard namespace manager'
+pkgrel=1
+pkgdesc='Per-application WireGuard network namespace manager'
 arch=('any')
+url='https://github.com/Excellence308/appwire'
 license=('MIT')
-depends=('python' 'iproute2' 'wireguard-tools' 'systemd' 'curl')
-optdepends=('python-gobject: GTK GUI' 'gtk3: GTK GUI')
-makedepends=('make')
-source=()
-sha256sums=()
+depends=(
+    'python'
+    'python-gobject'
+    'gtk3'
+    'iproute2'
+    'wireguard-tools'
+    'systemd'
+    'curl'
+)
+makedepends=('git')
+checkdepends=('desktop-file-utils')
+source=("git+https://github.com/Excellence308/appwire.git#tag=v${pkgver}")
+sha256sums=('SKIP')
 
 check() {
-    cd "$startdir"
+    cd "$srcdir/$pkgname"
     make check
 }
 
 package() {
-    cd "$startdir"
-    make DESTDIR="$pkgdir" install
+    cd "$srcdir/$pkgname"
+    make DESTDIR="$pkgdir" PREFIX=/usr install
 }
