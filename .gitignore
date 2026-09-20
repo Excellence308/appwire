@@ -43,3 +43,11 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# User application preferences, session records and network measurements
+/session-*.json
+/apps.json
+/diagnostics.json
+/measurements/
+/markers-*.txt
+/profile-labels.json

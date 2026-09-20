@@ -10,6 +10,7 @@ import struct
 import sys
 
 from .backend import Backend
+from . import __version__
 from .launch import spawn
 from .protocol import SOCKET, receive, send
 
@@ -24,17 +25,26 @@ def authorized(uid):
 
 def dispatch(backend, request, fds):
     op = request.get('op')
-    fields = {'list': set(), 'import': {'profile', 'config'}, 'remove': {'profile'}, 'start': {'profile'}, 'stop': {'profile'}, 'status': {'profile'}, 'run': {'profile', 'argv', 'env'}}
-    if op not in fields or set(request) != fields[op] | {'op'}:
+    fields = {'list': set(), 'info': set(), 'rename': {'profile', 'new_name'}, 'import': {'profile', 'config'}, 'remove': {'profile'}, 'start': {'profile'}, 'stop': {'profile'}, 'status': {'profile'}, 'run': {'profile', 'argv', 'env'}}
+    expected = fields.get(op, set()) | {'op'}
+    if op == 'import' and 'replace' in request:
+        expected = expected | {'replace'}
+        if type(request['replace']) is not bool:
+            raise ValueError('replace must be a boolean')
+    if op not in fields or set(request) != expected:
         raise ValueError('Unknown operation or unexpected request fields')
     if op != 'run' and fds:
         raise ValueError('Unexpected file descriptors')
     with backend.locked():
+        if op == 'info':
+            return {'version': __version__, 'protocol': 1}
+        if op == 'rename':
+            return backend.rename(request['profile'], request['new_name'])
         if op == 'list':
             return {'profiles': backend.profiles()}
         name = request['profile']
         if op == 'import':
-            return backend.import_config(name, request['config'])
+            return backend.import_config(name, request['config'], request.get('replace', False))
         if op == 'run':
             # Explicit start is required. Failure never launches on host.
             backend.path(name).stat()
@@ -90,7 +100,7 @@ def serve_connection(conn):
             # Exception strings for config validation / OS errors have no keys.
             # SubprocessError may include argv; keep these generic.
             message = str(error) if isinstance(error, (ValueError, PermissionError, FileNotFoundError, RuntimeError)) else 'Operation failed; check service journal and dependencies'
-            send(conn, {'ok': False, 'error': message})
+            send(conn, {'ok': False, 'error': message, 'code': getattr(error, 'code', None) or ('permission_denied' if isinstance(error, PermissionError) else 'not_found' if isinstance(error, FileNotFoundError) else 'invalid_request' if isinstance(error, ValueError) else 'operation_failed')})
         except OSError:
             pass
     finally:

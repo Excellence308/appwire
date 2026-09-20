@@ -1,12 +1,25 @@
-# AppWire 0.1 — per-app WireGuard for Arch Linux
+# AppWire 0.2 — per-app WireGuard for Arch Linux
 
 A custom MVP, built around Linux's existing WireGuard/network-namespace
 architecture. This is not an official Proton, WireGuard or Faugus component.
 
 The GUI and CLI run as you. One root system service handles a narrow set of
-requests: import/remove/list/start/stop/status/run. It authenticates the local
+requests: import/rename/remove/list/start/stop/status/run/info. It authenticates the local
 user, owns their profiles, enters the chosen namespace, configures private DNS,
 and drops all privileges before executing an application.
+
+## New in 0.2
+
+Batch import, explicit replacement, rename/delete, friendly labels and notes;
+service recovery and permission guidance; generation-aware IPv4/IPv6 exit checks;
+saved application launches and desktop shortcuts; disconnected session cleanup;
+dedicated browser profiles; diagnostics and bounded GUI application logs; actual
+WoW TCP measurements with Direct comparisons, history and stall markers.
+
+Read [release notes and upgrade guidance](docs/RELEASE-0.2.md) for commands,
+limitations and the backlog disposition. The install script refuses maintenance
+when service-owned applications are detected. Close the GUI and apps before
+upgrading; the package does not automatically restart the service.
 
 ## Architecture
 
@@ -38,10 +51,7 @@ From this source directory:
 make check
 ./tests/integration.sh
 makepkg -f
-sudo pacman -U ./appwire-0.1.0-2-any.pkg.tar.zst
-sudo systemd-sysusers
-sudo usermod -aG appwire "$USER"
-sudo systemctl enable --now appwire.service
+./scripts/install-local.sh
 ```
 
 The GUI additionally needs `python-gobject` and `gtk3`. The package declares
@@ -130,7 +140,9 @@ re-resolved in this MVP. Stop/start refreshes resolution.
 
 ## Lifecycle
 
-Profiles persist across reboots; running namespaces do not. Start is manual.
+Profiles persist across reboots; running namespaces do not. Start is explicit,
+or performed as part of an intentional saved-app launch. Setup enables the broker
+at boot but does not start VPN profiles.
 Stopping first deletes `wg0`, then removes the named namespace. Existing apps
 keep an isolated namespace with loopback only. Starting again creates a fresh
 namespace; restart the disconnected apps to use it. This prevents reconnecting
@@ -158,8 +170,8 @@ directories may remain until reboot, contain no keys, and are reused on restart.
 The isolated integration harness can map only its own user to namespace-root.
 It skips supplementary-group changes in that harness only; production refuses
 root clients and performs the real group/GID/UID drop. Full root-service operation,
-real Proton exit IP and the Faugus/Wine chain require a post-install host acceptance
-run. The project is an MVP, not an independently security-audited VPN product.
+the newly packaged version and the Faugus/Wine chain require post-install host
+acceptance. Earlier host-trial results do not prove this updated package is installed. The project is an MVP, not an independently security-audited VPN product.
 See [acceptance steps](docs/ACCEPTANCE.md) and [test results](docs/TEST-RESULTS.md).
 
 References: [WireGuard namespace architecture](https://www.wireguard.com/netns/),

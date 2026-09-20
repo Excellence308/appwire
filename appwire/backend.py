@@ -9,17 +9,41 @@ import re
 import subprocess
 import tempfile
 import time
+import uuid
 
 from .config import parse, profile_name
 
 ENV = {'PATH': '/usr/bin', 'LANG': 'C', 'WG_ENDPOINT_RESOLUTION_RETRIES': '0'}
 
 
+class OperationError(RuntimeError):
+    def __init__(self, stage, detail):
+        self.code = stage
+        super().__init__(f'{stage.replace("_", " ").capitalize()}: {detail}. Run appwire doctor; raw tool output is withheld to protect keys')
+
+
 def command(*args, input=None, check=True):
-    result = subprocess.run(args, input=input, text=True, capture_output=True, env=ENV, timeout=20)
+    # Derive stages only from fixed verb positions, never from supplied values.
+    if args[0] == '/usr/bin/wg' and args[1:2] == ('setconf',):
+        stage = 'configure_wireguard'
+    elif args[1:3] == ('netns', 'add'):
+        stage = 'create_namespace'
+    elif args[1:3] == ('netns', 'del'):
+        stage = 'remove_namespace'
+    elif args[1:3] == ('link', 'add'):
+        stage = 'create_wireguard_interface'
+    elif len(args) > 4 and args[1] == '-n' and args[3] in ('-4', '-6'):
+        stage = 'configure_tunnel_routes'
+    else:
+        stage = 'inspect_or_configure_namespace'
+    try:
+        result = subprocess.run(args, input=input, text=True, capture_output=True, env=ENV, timeout=20)
+    except subprocess.TimeoutExpired:
+        raise OperationError(stage, 'operation timed out') from None
+    except FileNotFoundError:
+        raise OperationError(stage, 'required system tool is missing') from None
     if check and result.returncode:
-        # wg errors can include secrets. Never return raw tool stderr.
-        raise RuntimeError(f'{Path(args[0]).name} operation failed ({result.returncode})')
+        raise OperationError(stage, f'tool exited with status {result.returncode}')
     return result.stdout if check else result.returncode
 
 
@@ -60,13 +84,15 @@ class Backend:
     def exists(self, name):
         return (self.netns / self.namespace(name)).exists()
 
-    def import_config(self, name, text):
+    def import_config(self, name, text, replace=False):
         parse(text)
         path = self.path(name)
         if not path.exists() and len(list(self.root.glob('*.conf'))) >= 32:
             raise ValueError('Maximum 32 profiles per user')
         if self.exists(name):
             raise ValueError('Stop this profile before replacing its configuration')
+        if path.exists() and not replace:
+            raise ValueError('Profile already exists; explicitly choose replacement or another name')
         atomic(path, text)
         return {'profile': name, 'state': 'imported'}
 
@@ -75,6 +101,15 @@ class Backend:
             raise ValueError('Stop this profile before removing it')
         self.path(name).unlink()
         return {'profile': name, 'state': 'removed'}
+
+    def rename(self, name, new_name):
+        source, target = self.path(name), self.path(new_name)
+        if self.exists(name) or self.exists(new_name):
+            raise ValueError('Stop the profile before renaming it')
+        if target.exists():
+            raise ValueError('The new profile name already exists')
+        source.rename(target)
+        return {'profile': new_name, 'state': 'renamed'}
 
     def start(self, name):
         config = parse(self.path(name).read_text())
@@ -109,15 +144,20 @@ class Backend:
             for route in config.routes:
                 command('/usr/bin/ip', '-n', ns, '-6' if ':' in route else '-4', 'route', 'replace', route, 'dev', 'wg0')
             self.verify(name)
+            atomic(directory / 'generation', str(uuid.uuid4()))
         except Exception:
             if made_if and not moved:
-                command('/usr/bin/ip', 'link', 'del', temporary_if, check=False)
+                with contextlib.suppress(OSError, RuntimeError, subprocess.SubprocessError):
+                    command('/usr/bin/ip', 'link', 'del', temporary_if, check=False)
             if made_ns:
-                command('/usr/bin/ip', 'netns', 'del', ns, check=False)
+                with contextlib.suppress(OSError, RuntimeError, subprocess.SubprocessError):
+                    command('/usr/bin/ip', 'netns', 'del', ns, check=False)
             raise
         return self.status(name)
 
     def verify(self, name):
+        if not self.exists(name):
+            raise RuntimeError('Profile is stopped. Start it before launching or checking its exit IP')
         ns = self.namespace(name)
         links = json.loads(command('/usr/bin/ip', '-n', ns, '-j', 'link', 'show'))
         if {x['ifname'] for x in links} != {'lo', 'wg0'}:
@@ -144,6 +184,8 @@ class Backend:
         ns = self.namespace(name)
         # Publish identity, not a namespace descriptor or access permissions.
         result['namespace_inode'] = (self.netns / ns).stat().st_ino
+        generation = self.runtime / ns / 'generation'
+        result['generation'] = generation.read_text() if generation.exists() else str(result['namespace_inode'])
         # Never use `wg show dump`: it includes private and preshared keys.
         fields = {}
         for field in ('endpoints', 'latest-handshakes', 'transfer'):
@@ -158,4 +200,11 @@ class Backend:
         return result
 
     def profiles(self):
-        return [self.status(p.stem) for p in sorted(self.root.glob('*.conf'))]
+        profiles = []
+        for path in sorted(self.root.glob('*.conf')):
+            try:
+                profiles.append(self.status(path.stem))
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+                profiles.append({'profile': path.stem, 'state': 'error', 'peers': [],
+                                 'error': 'Cannot inspect this profile; inspect service diagnostics before recovery'})
+        return profiles

@@ -1,3 +1,44 @@
+# Validation update — 20 September 2026, AppWire 0.2.0
+
+- 45 unit tests pass, including profile conflicts/rename, per-profile failures,
+  connection recovery, session identity/PID reuse, fail-closed launch selection,
+  setup enablement, bounded logging, shortcut escaping and TCP counter handling.
+- 21 disposable-kernel WireGuard checks pass: IPv4/IPv6 traffic, DNS, credential
+  and descriptor isolation, peer outage, and retained-app stop/restart behavior.
+- GTK smoke and regression scripts pass against a fake service: initial service
+  failure and recovery, stale exit invalidation, profile changes, unavailable
+  states, disabled controls and visible busy feedback. Screenshot inspected.
+- A ten-second disposable-network TCP fixture passes the real sampler: synthetic
+  WowB.exe process attribution, namespace verification, ten samples, traffic
+  deltas and structured output without raw socket dumps.
+- Arch package build succeeds with its unit-test phase. Desktop entry validation,
+  Python compilation, shell syntax and git whitespace checks pass.
+
+These tests do not install or restart the production service. Full installed
+0.2 root-service cross-user acceptance, a real reboot and the updated Faugus/WoW
+GUI workflow remain to be tested after installation. No fresh provider latency
+ranking was produced.
+
+The earlier host trial's disconnect report records successful provider exit,
+unchanged host IPv4/IPv6 routes, blocked retained-app traffic after stop/restart,
+and WoW/Wine processes remaining in the old disconnected namespace. Those are
+historical 0.1 host results, not evidence that 0.2 has been deployed.
+
+Commands for additional checks:
+
+```sh
+make check
+python tests/gui_smoke.py /tmp/appwire-gui.png
+python tests/gui_regression.py
+./tests/integration.sh
+APPWIRE_MEASUREMENT_TEST=1 unshare --user --map-root-user --net python tests/measurement_integration.py
+```
+
+## Archived MVP validation (19 September 2026)
+
+The following is the original milestone record. Its "not yet verified" section
+reflects that earlier point in time and is superseded by the update above.
+
 # MVP validation — 19 September 2026
 
 ## Passed

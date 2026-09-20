@@ -12,7 +12,17 @@ from .protocol import SOCKET, receive, send
 def connect():
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
     sock.settimeout(120)
-    sock.connect(SOCKET)
+    try:
+        sock.connect(SOCKET)
+    except (FileNotFoundError, ConnectionRefusedError) as error:
+        sock.close()
+        raise RuntimeError('AppWire service is unavailable. Run appwire setup in a terminal to enable startup, then Retry. Saved profiles have not been deleted.') from error
+    except PermissionError as error:
+        sock.close()
+        raise RuntimeError('Access denied. Run appwire doctor to check appwire group membership. After joining the group, log out of the desktop and back in; a new terminal alone may not refresh desktop permissions.') from error
+    except OSError:
+        sock.close()
+        raise
     return sock
 
 

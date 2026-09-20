@@ -1,0 +1,6 @@
+post_install() {
+    printf '%s\n' 'AppWire: run appwire setup as your desktop user to enroll and enable boot startup.' 'Log out and back in after first enrollment. No tunnel is started automatically.'
+}
+post_upgrade() {
+    printf '%s\n' 'AppWire: close all AppWire-launched apps before restarting appwire.service.' 'The service is not restarted automatically: restart it after apps exit, then reopen the GUI.' 'Run appwire doctor to compare client and broker versions.'
+}
