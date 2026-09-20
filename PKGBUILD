@@ -1,7 +1,7 @@
 # Maintainer: Excellence308 <180781538+Excellence308@users.noreply.github.com>
 
 pkgname=appwire
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Per-application WireGuard network namespace manager'
 arch=('any')
