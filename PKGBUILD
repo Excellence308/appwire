@@ -24,6 +24,7 @@ sha256sums=('SKIP')
 check() {
     cd "$srcdir/$pkgname"
     make check
+    desktop-file-validate packaging/appwire.desktop
 }
 
 package() {
